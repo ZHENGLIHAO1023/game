@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>猜数字游戏</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4F46E5',
+            secondary: '#7C3AED',
+            accent: '#EC4899',
+            neutral: '#1F2937',
+            'base-100': '#FFFFFF',
+            info: '#3ABFF8',
+            success: '#10B981',
+            warning: '#F59E0B',
+            error: '#EF4444',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .game-shadow {
+        box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.1), 0 8px 10px -6px rgba(79, 70, 229, 0.1);
+      }
+      .input-focus {
+        @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
+      }
+      .btn-primary {
+        @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+      }
+      .btn-secondary {
+        @apply bg-white border border-primary text-primary hover:bg-primary/5 font-medium py-2 px-4 rounded-lg transition-all duration-300;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-50 min-h-screen font-sans">
+  <div class="container mx-auto px-4 py-8 max-w-3xl">
+    <!-- 游戏标题 -->
+    <header class="text-center mb-10">
+      <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">
+        猜数字游戏
+      </h1>
+      <p class="text-gray-600 text-lg">我想好了一个1到100之间的数字，你能猜出来吗？</p>
+    </header>
+
+    <!-- 游戏卡片 -->
+    <div class="bg-white rounded-2xl p-8 game-shadow mb-8 transform transition-all duration-500 hover:shadow-xl">
+      <!-- 游戏状态 -->
+      <div id="game-status" class="mb-6">
+        <p class="text-gray-700 text-lg mb-2">
+          <i class="fa fa-lightbulb-o text-warning mr-2"></i>
+          <span id="status-message">请输入一个1-100之间的数字</span>
+        </p>
+        <div class="flex items-center text-sm text-gray-500">
+          <i class="fa fa-trophy text-accent mr-2"></i>
+          <span>尝试次数: <span id="attempts" class="font-semibold text-neutral">0</span></span>
+        </div>
+      </div>
+
+      <!-- 猜测输入 -->
+      <div class="mb-6">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input 
+            type="number" 
+            id="guess-input" 
+            min="1" 
+            max="100" 
+            placeholder="输入你的猜测..." 
+            class="flex-1 px-4 py-3 rounded-lg border border-gray-300 shadow-sm input-focus outline-none transition-all duration-300"
+          >
+          <button 
+            id="guess-button" 
+            class="btn-primary flex items-center justify-center"
+          >
+            <i class="fa fa-paper-plane mr-2"></i> 提交猜测
+          </button>
+        </div>
+        <p id="input-error" class="text-error mt-2 text-sm hidden">请输入有效的数字！</p>
+      </div>
+
+      <!-- 历史记录 -->
+      <div id="history-container" class="mt-8">
+        <h3 class="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+          <i class="fa fa-history text-primary mr-2"></i> 猜测历史
+        </h3>
+        <div id="guess-history" class="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
+          <p class="text-gray-500 text-center italic">暂无记录</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏统计 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-6 shadow-md flex items-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mr-4">
+          <i class="fa fa-bolt text-primary text-xl"></i>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">当前轮次</p>
+          <p id="current-streak" class="text-2xl font-bold text-neutral">0</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-md flex items-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+        <div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mr-4">
+          <i class="fa fa-star text-success text-xl"></i>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">最佳记录</p>
+          <p id="best-record" class="text-2xl font-bold text-neutral">--</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-md flex items-center transform transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+        <div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mr-4">
+          <i class="fa fa-gamepad text-secondary text-xl"></i>
+        </div>
+        <div>
+          <p class="text-sm text-gray-500">游戏次数</p>
+          <p id="total-games" class="text-2xl font-bold text-neutral">0</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="flex justify-center gap-4">
+      <button id="new-game-button" class="btn-primary flex items-center">
+        <i class="fa fa-refresh mr-2"></i> 开始新游戏
+      </button>
+      <button id="how-to-play-button" class="btn-secondary flex items-center">
+        <i class="fa fa-question-circle mr-2"></i> 游戏规则
+      </button>
+    </div>
+
+    <!-- 游戏规则模态框 -->
+    <div id="how-to-play-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold text-neutral">游戏规则</h2>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <i class="fa fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="space-y-4 text-gray-700">
+          <p>1. 我会随机想一个1到100之间的数字。</p>
+          <p>2. 你需要猜测这个数字。</p>
+          <p>3. 我会根据你的猜测给出提示：</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li class="text-info"><i class="fa fa-arrow-up mr-1"></i> 猜的数字太小了</li>
+            <li class="text-warning"><i class="fa fa-arrow-down mr-1"></i> 猜的数字太大了</li>
+            <li class="text-success"><i class="fa fa-check-circle mr-1"></i> 恭喜，猜对了！</li>
+          </ul>
+          <p>4. 你可以查看猜测历史，帮助你做出更好的猜测。</p>
+          <p>5. 尝试次数越少，你的成绩越好！</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 胜利提示模态框 -->
+    <div id="success-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+      <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center transform transition-all duration-300 scale-95 opacity-0" id="success-content">
+        <div class="relative mb-6">
+          <div class="w-24 h-24 bg-success/20 rounded-full flex items-center justify-center mx-auto">
+            <i class="fa fa-trophy text-success text-4xl"></i>
+          </div>
+          <div class="absolute -top-2 -right-2 w-10 h-10 bg-success rounded-full flex items-center justify-center">
+            <span class="text-white font-bold">+1</span>
+          </div>
+        </div>
+        <h2 class="text-2xl font-bold text-neutral mb-2">恭喜你！</h2>
+        <p class="text-gray-700 mb-4">你猜对了数字 <span id="correct-number" class="font-semibold">0</span></p>
+        <p class="text-gray-700 mb-6">你用了 <span id="final-attempts" class="font-semibold">0</span> 次尝试</p>
+        <div class="flex justify-center gap-4">
+          <button id="play-again-button" class="btn-primary">
+            <i class="fa fa-refresh mr-2"></i> 再玩一次
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+      <p>© 2025 猜数字游戏 | 享受游戏的乐趣！</p>
+    </footer>
+  </div>
+
+  <script>
+    // 游戏状态
+    let gameState = {
+      secretNumber: Math.floor(Math.random() * 100) + 1,
+      attempts: 0,
+      history: [],
+      bestRecord: localStorage.getItem('bestRecord') ? parseInt(localStorage.getItem('bestRecord')) : null,
+      totalGames: localStorage.getItem('totalGames') ? parseInt(localStorage.getItem('totalGames')) : 0,
+      currentStreak: 0
+    };
+
+    // DOM 元素
+    const elements = {
+      guessInput: document.getElementById('guess-input'),
+      guessButton: document.getElementById('guess-button'),
+      guessHistory: document.getElementById('guess-history'),
+      attempts: document.getElementById('attempts'),
+      statusMessage: document.getElementById('status-message'),
+      inputError: document.getElementById('input-error'),
+      newGameButton: document.getElementById('new-game-button'),
+      howToPlayButton: document.getElementById('how-to-play-button'),
+      howToPlayModal: document.getElementById('how-to-play-modal'),
+      modalContent: document.getElementById('modal-content'),
+      closeModal: document.getElementById('close-modal'),
+      successModal: document.getElementById('success-modal'),
+      successContent: document.getElementById('success-content'),
+      correctNumber: document.getElementById('correct-number'),
+      finalAttempts: document.getElementById('final-attempts'),
+      playAgainButton: document.getElementById('play-again-button'),
+      bestRecord: document.getElementById('best-record'),
+      totalGames: document.getElementById('total-games'),
+      currentStreak: document.getElementById('current-streak')
+    };
+
+    // 初始化游戏
+    function initGame() {
+      updateGameStats();
+      elements.guessInput.focus();
+      
+      // 事件监听
+      elements.guessButton.addEventListener('click', handleGuess);
+      elements.guessInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleGuess();
+      });
+      elements.newGameButton.addEventListener('click', startNewGame);
+      elements.howToPlayButton.addEventListener('click', openHowToPlayModal);
+      elements.closeModal.addEventListener('click', closeHowToPlayModal);
+      elements.playAgainButton.addEventListener('click', () => {
+        closeSuccessModal();
+        startNewGame();
+      });
+      
+      // 点击模态框外部关闭
+      elements.howToPlayModal.addEventListener('click', (e) => {
+        if (e.target === elements.howToPlayModal) closeHowToPlayModal();
+      });
+      
+      elements.successModal.addEventListener('click', (e) => {
+        if (e.target === elements.successModal) {
+          closeSuccessModal();
+          startNewGame();
+        }
+      });
+    }
+
+    // 处理猜测
+    function handleGuess() {
+      const guess = parseInt(elements.guessInput.value);
+      
+      // 验证输入
+      if (isNaN(guess) || guess < 1 || guess > 100) {
+        showInputError('请输入1-100之间的数字');
+        return;
+      }
+      
+      hideInputError();
+      gameState.attempts++;
+      
+      // 添加到历史记录
+      const result = getGuessResult(guess);
+      gameState.history.push({ guess, result });
+      
+      // 更新UI
+      updateHistory();
+      elements.attempts.textContent = gameState.attempts;
+      elements.statusMessage.textContent = result.message;
+      
+      // 清空输入
+      elements.guessInput.value = '';
+      elements.guessInput.focus();
+      
+      // 检查是否猜对
+      if (result.isCorrect) {
+        handleSuccess();
+      }
+    }
+
+    // 获取猜测结果
+    function getGuessResult(guess) {
+      if (guess < gameState.secretNumber) {
+        return {
+          message: '猜的数字太小了！',
+          isCorrect: false,
+          type: 'low'
+        };
+      } else if (guess > gameState.secretNumber) {
+        return {
+          message: '猜的数字太大了！',
+          isCorrect: false,
+          type: 'high'
+        };
+      } else {
+        return {
+          message: '恭喜，猜对了！',
+          isCorrect: true,
+          type: 'correct'
+        };
+      }
+    }
+
+    // 处理猜对的情况
+    function handleSuccess() {
+      // 更新统计
+      gameState.totalGames++;
+      
+      // 更新最佳记录
+      if (!gameState.bestRecord || gameState.attempts < gameState.bestRecord) {
+        gameState.bestRecord = gameState.attempts;
+        localStorage.setItem('bestRecord', gameState.bestRecord);
+      }
+      
+      // 更新连胜
+      gameState.currentStreak++;
+      
+      // 保存游戏次数
+      localStorage.setItem('totalGames', gameState.totalGames);
+      
+      // 更新UI
+      elements.correctNumber.textContent = gameState.secretNumber;
+      elements.finalAttempts.textContent = gameState.attempts;
+      updateGameStats();
+      
+      // 显示成功模态框
+      setTimeout(() => {
+        elements.successModal.classList.remove('hidden');
+        setTimeout(() => {
+          elements.successContent.classList.remove('scale-95', 'opacity-0');
+          elements.successContent.classList.add('scale-100', 'opacity-100');
+        }, 50);
+      }, 500);
+    }
+
+    // 开始新游戏
+    function startNewGame() {
+      gameState.secretNumber = Math.floor(Math.random() * 100) + 1;
+      gameState.attempts = 0;
+      gameState.history = [];
+      
+      elements.attempts.textContent = '0';
+      elements.statusMessage.textContent = '请输入一个1-100之间的数字';
+      elements.guessHistory.innerHTML = '<p class="text-gray-500 text-center italic">暂无记录</p>';
+      elements.guessInput.focus();
+    }
+
+    // 更新历史记录
+    function updateHistory() {
+      if (gameState.history.length === 0) {
+        elements.guessHistory.innerHTML = '<p class="text-gray-500 text-center italic">暂无记录</p>';
+        return;
+      }
+      
+      elements.guessHistory.innerHTML = '';
+      
+      gameState.history.forEach((item, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'flex items-center justify-between p-2 border-b border-gray-100 last:border-0';
+        
+        let iconClass, textClass;
+        
+        if (item.type === 'low') {
+          iconClass = 'fa-arrow-up text-info';
+          textClass = 'text-info';
+        } else if (item.type === 'high') {
+          iconClass = 'fa-arrow-down text-warning';
+          textClass = 'text-warning';
+        } else {
+          iconClass = 'fa-check-circle text-success';
+          textClass = 'text-success font-bold';
+        }
+        
+        historyItem.innerHTML = `
+          <div class="flex items-center">
+            <span class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2 text-sm">${index + 1}</span>
+            <span class="${textClass}">${item.guess}</span>
+          </div>
+          <div class="flex items-center">
+            <i class="fa ${iconClass} mr-2"></i>
+            <span class="text-sm text-gray-600">${item.message}</span>
+          </div>
+        `;
+        
+        elements.guessHistory.appendChild(historyItem);
+      });
+      
+      // 滚动到底部
+      elements.guessHistory.scrollTop = elements.guessHistory.scrollHeight;
+    }
+
+    // 更新游戏统计
+    function updateGameStats() {
+      elements.bestRecord.textContent = gameState.bestRecord || '--';
+      elements.totalGames.textContent = gameState.totalGames;
+      elements.currentStreak.textContent = gameState.currentStreak;
+    }
+
+    // 显示输入错误
+    function showInputError(message) {
+      elements.inputError.textContent = message;
+      elements.inputError.classList.remove('hidden');
+      elements.guessInput.classList.add('border-error');
+      
+      setTimeout(() => {
+        hideInputError();
+      }, 3000);
+    }
+
+    // 隐藏输入错误
+    function hideInputError() {
+      elements.inputError.classList.add('hidden');
+      elements.guessInput.classList.remove('border-error');
+    }
+
+    // 打开游戏规则模态框
+    function openHowToPlayModal() {
+      elements.howToPlayModal.classList.remove('hidden');
+      setTimeout(() => {
+        elements.modalContent.classList.remove('scale-95', 'opacity-0');
+        elements.modalContent.classList.add('scale-100', 'opacity-100');
+      }, 50);
+    }
+
+    // 关闭游戏规则模态框
+    function closeHowToPlayModal() {
+      elements.modalContent.classList.remove('scale-100', 'opacity-100');
+      elements.modalContent.classList.add('scale-95', 'opacity-0');
+      
+      setTimeout(() => {
+        elements.howToPlayModal.classList.add('hidden');
+      }, 300);
+    }
+
+    // 关闭成功模态框
+    function closeSuccessModal() {
+      elements.successContent.classList.remove('scale-100', 'opacity-100');
+      elements.successContent.classList.add('scale-95', 'opacity-0');
+      
+      setTimeout(() => {
+        elements.successModal.classList.add('hidden');
+      }, 300);
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
+    
